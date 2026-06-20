@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-<title>❤️‍🔥경복 어근접사 마스터❤️‍🔥</title>
+<title>❤️‍🔥경복 어근접사마스터❤️‍🔥</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://cdn.jsdelivr.net" />
@@ -33,8 +33,8 @@
   /* header */
   .hd{ position:sticky; top:0; z-index:6; background:var(--pa);
     padding:16px 0 8px; }
-  .hd-row{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
-  .title{ font-size:23px; }
+  .hd-row{ display:flex; align-items:baseline; justify-content:space-between; gap:6px; flex-wrap:wrap; }
+  .title{ font-size:20px; line-height:1.2; }
   .title .pin{ color:var(--aff-bd); }
   .src{ font-size:11px; color:var(--sub); white-space:nowrap; }
   .bar{ position:relative; height:20px; margin-top:10px; border-radius:99px;
@@ -316,11 +316,8 @@ function save(o){ try{ localStorage.setItem(KEY, JSON.stringify(o)); }catch{} }
 
 /* =================== 유틸 =================== */
 function shuffle(a){ const x=[...a]; for(let i=x.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [x[i],x[j]]=[x[j],x[i]]; } return x; }
-function weakFirst(data, keyFn, mastery, n){
-  const s = data.map(d=>({ d, lv: mastery[keyFn(d)]||0 }));
-  s.sort((a,b)=> a.lv-b.lv);
-  return shuffle(s.slice(0, Math.min(n, s.length)).map(o=>o.d));
-}
+// 풀 전체에서 매번 새로 랜덤 추출 (유형이 한쪽으로 몰리지 않게)
+function pickSet(data, n){ return shuffle(data).slice(0, Math.min(n, data.length)); }
 
 /* =================== 개념 탭 =================== */
 function Concept(){
@@ -354,7 +351,8 @@ function Concept(){
 
 /* =================== 끊어보기 탭 =================== */
 function CutDrill({ mastery, onResult }){
-  const queue = useMemo(()=> weakFirst(CUT, d=>"cut:"+d.w, mastery, 10), []); // eslint-disable-line
+  const [round,setRound]=useState(0);
+  const queue = useMemo(()=> pickSet(CUT, 10), [round]);
   const [pos,setPos]=useState(0);
   const [pick,setPick]=useState(null);   // 선택한 위치
   const [solved,setSolved]=useState(false);
@@ -374,7 +372,7 @@ function CutDrill({ mastery, onResult }){
     }
   };
   const next = ()=>{ setPick(null); setSolved(false); setMissed(false);
-    setPos(p=> (p+1)%queue.length); };
+    if(pos+1>=queue.length){ setRound(r=>r+1); setPos(0); } else setPos(pos+1); };
 
   // 분해 결과 그룹
   const leftRole = it.kind==="pre" ? "aff" : "root";
@@ -460,7 +458,7 @@ function Choice({ word, options, answer, why, keyId, onResult, onNext, idx, tota
         <>
           <p className={"verdict "+(ok?"ok":"no")}>{ok?"정답이에요":"다시 보기"}</p>
           <p className="why">{why}</p>
-          <button className="primary" onClick={onNext}>{idx+1>=total?"처음부터":"다음 →"}</button>
+          <button className="primary" onClick={onNext}>{idx+1>=total?"새 세트 →":"다음 →"}</button>
         </>
       )}
       <div className="count">{idx+1} / {total}</div>
@@ -471,13 +469,14 @@ function Choice({ word, options, answer, why, keyId, onResult, onNext, idx, tota
 /* =================== 복합어 탭 =================== */
 function Compound({ mastery, onResult }){
   const [mode,setMode]=useState("gu"); // gu 구성 / ba 배열
+  const [round,setRound]=useState(0);
   const data = mode==="gu"?GUSEONG:BAEYEOL;
   const opts = mode==="gu"?["파생어","합성어"]:["통사적","비통사적"];
   const pfx = mode==="gu"?"gu:":"ba:";
-  const queue = useMemo(()=> weakFirst(data, d=>pfx+d.w, mastery, 10), [mode]); // eslint-disable-line
+  const queue = useMemo(()=> pickSet(data, 10), [mode, round]);
   const [pos,setPos]=useState(0);
   const it = queue[pos % queue.length];
-  const next=()=> setPos(p=>(p+1)%queue.length);
+  const next=()=>{ if(pos+1>=queue.length){ setRound(r=>r+1); setPos(0); } else setPos(pos+1); };
 
   return (
     <div className="stack">
@@ -499,7 +498,8 @@ function Compound({ mastery, onResult }){
 
 /* =================== 형태소 탭 (두 갈래) =================== */
 function Morpheme({ mastery, onResult }){
-  const queue = useMemo(()=> weakFirst(MORPH, d=>"mo:"+d.m, mastery, 10), []); // eslint-disable-line
+  const [round,setRound]=useState(0);
+  const queue = useMemo(()=> pickSet(MORPH, 10), [round]);
   const [pos,setPos]=useState(0);
   const [a,setA]=useState(null); // 자립/의존
   const [s,setS]=useState(null); // 실질/형식
@@ -512,7 +512,8 @@ function Morpheme({ mastery, onResult }){
   }
   const pickA=(v)=>{ if(a!==null) return; setA(v); finish(v,s); };
   const pickS=(v)=>{ if(s!==null) return; setS(v); finish(a,v); };
-  const next=()=>{ setA(null); setS(null); setPos(p=>(p+1)%queue.length); };
+  const next=()=>{ setA(null); setS(null);
+    if(pos+1>=queue.length){ setRound(r=>r+1); setPos(0); } else setPos(pos+1); };
 
   const btn = (cur,val,corr,onPick)=>{
     let cls="opt";
@@ -580,7 +581,7 @@ function Wrong({ wrong, onClear }){
   return (
     <div className="stack">
       <div className="row-b">
-        <p className="lead">틀린 항목 {wrong.length}개 · 각 모드에서 자동으로 더 자주 나와요</p>
+        <p className="lead">틀린 항목 {wrong.length}개 · 복습용으로 모아 둔 거예요</p>
         <button className="ghost sm" onClick={onClear}>비우기</button>
       </div>
       {wrong.map(k=>(
@@ -629,7 +630,7 @@ function App(){
     <>
       <header className="hd">
         <div className="hd-row">
-          <h1 className="title jua">어근<span className="pin">·</span>접사 학습기</h1>
+          <h1 className="title jua">지니쌤이랑 어근접사마스터<span className="pin">❤️‍🔥</span></h1>
           <span className="src">경복여고 1학년 기말 대비</span>
         </div>
         <div className="bar" aria-label={"숙련도 "+pct+"%"}>
@@ -654,7 +655,7 @@ function App(){
         {tab==="wrong" && <Wrong wrong={wrong} onClear={clearWrong}/>}
       </main>
 
-      <p className="ft">진도는 이 브라우저에 저장돼요 · 약한 단어부터 다시 출제<br/>경복여고 국어B 프린트 기반 </p>
+      <p className="ft">진도는 이 브라우저에 저장돼요 · 세트를 마치면 새 10문항이 랜덤으로<br/>경복여고 국어B 프린트 기반</p>
     </>
   );
 }

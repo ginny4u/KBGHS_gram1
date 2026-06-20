@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>어근·접사 반복 학습기</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet" />
+
+<style>
+  :root{
+    --pa:#FFF9F5; --pn:#FFFFFF; --ln:#F2E7DE; --ink:#4B4138; --sub:#A0948A;
+    --lav:#9C8AE0; --lav-d:#8775D8;
+    --root-bg:#D6F2E3; --root-bd:#54C091; --root-ink:#1B855F;
+    --aff-bg:#FFDCEC; --aff-bd:#F37BAC; --aff-ink:#C53E7D;
+    --free-bg:#FFF1C9; --free-bd:#F1C84F; --free-ink:#9A7A16;   /* 자립 */
+    --dep-bg:#E8E1FB; --dep-bd:#9C8AE0; --dep-ink:#6A55C4;      /* 의존 */
+    --bad:#EE7B7B; --good:#54C091;
+    --shadow:0 4px 16px rgba(170,140,120,.10);
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; background:var(--pa); }
+  body{ font-family:'Pretendard',system-ui,sans-serif; color:var(--ink);
+    -webkit-font-smoothing:antialiased; }
+  .jua{ font-family:'Jua','Pretendard',sans-serif; font-weight:400; }
+
+  #root{ max-width:540px; margin:0 auto; min-height:100vh; padding:0 16px
+    calc(34px + env(safe-area-inset-bottom)); }
+
+  /* header */
+  .hd{ position:sticky; top:0; z-index:6; background:var(--pa);
+    padding:16px 0 8px; }
+  .hd-row{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+  .title{ font-size:23px; }
+  .title .pin{ color:var(--aff-bd); }
+  .src{ font-size:11px; color:var(--sub); white-space:nowrap; }
+  .bar{ position:relative; height:20px; margin-top:10px; border-radius:99px;
+    background:#F4ECE4; overflow:hidden; box-shadow:inset 0 1px 2px rgba(0,0,0,.04); }
+  .bar > i{ position:absolute; inset:0 auto 0 0; border-radius:99px;
+    background:linear-gradient(90deg,var(--root-bd),var(--aff-bd));
+    transition:width .55s cubic-bezier(.34,1.4,.5,1); }
+  .bar > b{ position:absolute; inset:0; display:flex; align-items:center;
+    justify-content:center; font-size:11px; font-weight:700; color:#6b5f54; }
+
+  /* tabs */
+  .tabs{ position:sticky; top:78px; z-index:5; display:grid;
+    grid-template-columns:repeat(5,1fr); gap:5px; padding:8px 0 10px; background:var(--pa); }
+  .tab{ border:1.5px solid var(--ln); background:var(--pn); color:var(--sub);
+    border-radius:13px; padding:9px 2px; font-size:12.5px; font-weight:700;
+    cursor:pointer; position:relative; transition:.15s; }
+  .tab.on{ background:var(--lav); border-color:var(--lav); color:#fff;
+    box-shadow:0 3px 10px rgba(156,138,224,.35); }
+  .tab .dot{ position:absolute; top:-5px; right:-3px; min-width:16px; height:16px;
+    background:var(--aff-bd); color:#fff; border-radius:99px; font-size:10px;
+    display:flex; align-items:center; justify-content:center; padding:0 4px; }
+
+  .stack{ display:flex; flex-direction:column; gap:12px; padding-top:2px; }
+  .lead{ font-size:13px; color:var(--sub); margin:2px 2px 0; line-height:1.5; }
+  .card{ background:var(--pn); border:1.5px solid var(--ln); border-radius:20px;
+    padding:16px; box-shadow:var(--shadow); }
+
+  /* concept */
+  .c-h{ margin:0 0 6px; font-size:16px; display:flex; align-items:center; gap:7px; }
+  .c-h .chip{ width:10px; height:10px; border-radius:99px; flex:none; }
+  .card p{ margin:0; font-size:13.5px; line-height:1.62; }
+  .ex{ margin-top:8px!important; font-size:12px; color:var(--sub);
+    background:#FBF6F0; border-radius:10px; padding:7px 10px; }
+
+  .dict-h{ font-size:13px; font-weight:800; color:var(--sub); margin:14px 2px 2px;
+    letter-spacing:.02em; }
+  .row{ display:flex; align-items:center; gap:10px; padding:10px 12px;
+    border:1.5px solid var(--ln); border-radius:14px; background:var(--pn); }
+  .row .af{ font-family:'Jua'; font-size:18px; min-width:54px; text-align:center;
+    color:var(--aff-ink); }
+  .row .mn{ font-size:12.5px; font-weight:700; }
+  .row .eg{ font-size:11.5px; color:var(--sub); margin-top:2px; }
+
+  /* generic word + tiles */
+  .big-word{ font-family:'Jua'; font-size:42px; text-align:center; letter-spacing:.02em; }
+  .tiles{ display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:2px; }
+  .syl{ font-family:'Jua'; font-size:34px; padding:8px 6px; border-radius:12px;
+    min-width:44px; text-align:center; transition:transform .3s, background .2s; }
+  .gap{ width:18px; height:54px; border:0; background:transparent; cursor:pointer;
+    position:relative; border-radius:8px; }
+  .gap::before{ content:''; position:absolute; top:8px; bottom:8px; left:50%;
+    width:2px; transform:translateX(-50%); background:#E7DACD; border-radius:2px;
+    transition:.15s; }
+  .gap:hover::before{ background:var(--lav); }
+  .gap.pick::before{ background:var(--lav); width:3px;
+    box-shadow:0 0 0 3px rgba(156,138,224,.18); }
+  .gap.shake{ animation:shake .35s; }
+  @keyframes shake{ 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)}
+    75%{transform:translateX(4px)} }
+
+  .grp{ display:flex; align-items:center; gap:2px; padding:4px 6px; border-radius:14px;
+    transition:transform .35s cubic-bezier(.34,1.3,.5,1); }
+  .grp.root{ background:var(--root-bg); } .grp.aff{ background:var(--aff-bg); }
+  .grp.root .syl{ color:var(--root-ink); } .grp.aff .syl{ color:var(--aff-ink); }
+  .lab{ display:inline-flex; align-items:center; gap:4px; font-size:11px;
+    font-weight:800; padding:3px 9px; border-radius:99px; border:1.5px solid; }
+  .lab.root{ color:var(--root-ink); border-color:var(--root-bd); background:#fff; }
+  .lab.aff{ color:var(--aff-ink); border-color:var(--aff-bd); background:#fff; }
+
+  .split{ display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;
+    animation:pop .4s ease; }
+  .plus{ font-family:'Jua'; font-size:22px; color:var(--sub); }
+  @keyframes pop{ from{transform:scale(.9);opacity:0} to{transform:scale(1);opacity:1} }
+
+  .tile{ position:relative; font-family:'Jua'; font-size:24px; padding:13px 16px 9px;
+    border-radius:14px; border:2px solid; }
+  .tile.root{ background:var(--root-bg); border-color:var(--root-bd); color:var(--root-ink); }
+  .tile.aff{ background:var(--aff-bg); border-color:var(--aff-bd); color:var(--aff-ink); }
+  .tile .tg{ position:absolute; top:-10px; left:9px; font-family:'Pretendard';
+    font-size:10px; font-weight:800; padding:1px 7px; border-radius:99px; background:#fff;
+    border:1.5px solid currentColor; }
+
+  /* options */
+  .opts{ display:grid; grid-template-columns:1fr 1fr; gap:9px; width:100%; }
+  .opt{ font-family:'Jua'; font-size:18px; border:2px solid var(--ln); background:#fff;
+    border-radius:15px; padding:15px 8px; cursor:pointer; transition:.13s; color:var(--ink); }
+  .opt:hover:not(:disabled){ border-color:var(--lav); transform:translateY(-1px); }
+  .opt.right{ background:var(--root-bg); border-color:var(--root-bd); color:var(--root-ink); }
+  .opt.wrong{ background:#FCE3E3; border-color:var(--bad); color:#b94a4a; }
+  .opt.dim{ opacity:.4; }
+  .opt:disabled{ cursor:default; }
+
+  .ask{ font-size:13px; color:var(--sub); text-align:center; }
+  .verdict{ font-family:'Jua'; font-size:17px; }
+  .verdict.ok{ color:var(--good); } .verdict.no{ color:var(--bad); }
+  .why{ font-size:13px; text-align:center; line-height:1.55; }
+  .why b{ color:var(--aff-ink); }
+  .tagk{ display:inline-block; font-size:11px; color:var(--sub); background:#FBF6F0;
+    padding:2px 9px; border-radius:99px; margin-left:5px; }
+
+  .primary{ font-family:'Jua'; font-size:16px; background:var(--lav); color:#fff; border:0;
+    border-radius:15px; padding:13px; width:100%; cursor:pointer;
+    box-shadow:0 4px 12px rgba(156,138,224,.32); transition:.13s; }
+  .primary:hover{ background:var(--lav-d); }
+  .ghost{ border:1.5px solid var(--ln); background:#fff; border-radius:12px;
+    padding:9px 14px; font-size:13px; font-weight:700; color:var(--ink); cursor:pointer; }
+  .ghost.sm{ padding:6px 11px; font-size:12px; color:var(--sub); }
+
+  .seg{ display:flex; gap:4px; background:#F4ECE4; padding:4px; border-radius:14px; }
+  .seg-b{ flex:1; border:0; background:transparent; padding:9px; border-radius:11px;
+    font-weight:700; font-size:13px; color:var(--sub); cursor:pointer; }
+  .seg-b.on{ background:#fff; color:var(--ink); box-shadow:0 2px 6px rgba(0,0,0,.07); }
+
+  .q-card{ display:flex; flex-direction:column; align-items:center; gap:14px; padding:22px 16px; }
+  .nav{ display:flex; align-items:center; justify-content:space-between; }
+  .count{ font-size:13px; color:var(--sub); font-variant-numeric:tabular-nums; }
+
+  .step-q{ display:flex; align-items:center; gap:6px; font-size:13px; color:var(--sub); }
+  .step-q .n{ width:18px; height:18px; border-radius:99px; background:var(--lav); color:#fff;
+    font-size:11px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; }
+
+  .mini{ display:flex; align-items:center; justify-content:space-between; padding:11px 14px; }
+  .mini .mw{ font-family:'Jua'; font-size:18px; }
+  .mini .mk{ font-size:11px; color:var(--sub); }
+  .empty{ text-align:center; padding:48px 16px; color:var(--sub); }
+  .empty .mk{ width:54px; height:54px; border-radius:99px; background:var(--root-bg);
+    color:var(--root-ink); font-family:'Jua'; font-size:26px; display:inline-flex;
+    align-items:center; justify-content:center; margin-bottom:12px; }
+  .row-b{ display:flex; align-items:center; justify-content:space-between; }
+  .ft{ text-align:center; font-size:11px; color:var(--sub); margin-top:22px; line-height:1.6; }
+
+  :focus-visible{ outline:3px solid var(--lav); outline-offset:2px; }
+  @media (prefers-reduced-motion:reduce){ *{ animation:none!important; transition:none!important; } }
+  @media (max-width:360px){ .tab{ font-size:11.5px; } .syl{ font-size:30px; min-width:40px; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useCallback } = React;
+
+/* =================== 데이터 (프린트 5·7·8·9·10·11쪽) =================== */
+
+// 끊어보기: 표면 음절이 어근/접사 경계와 깔끔히 나뉘는 파생어만
+// kind 'pre' → 왼쪽=접사, 오른쪽=어근 / 'suf' → 왼쪽=어근, 오른쪽=접사
+const CUT = [
+  { w:"풋사과", ch:["풋","사","과"], cut:1, kind:"pre", root:"사과", aff:"풋-", note:"덜 익은" },
+  { w:"풋나물", ch:["풋","나","물"], cut:1, kind:"pre", root:"나물", aff:"풋-", note:"처음 나온" },
+  { w:"군침", ch:["군","침"], cut:1, kind:"pre", root:"침", aff:"군-", note:"쓸데없이 더한" },
+  { w:"홀아비", ch:["홀","아","비"], cut:1, kind:"pre", root:"아비", aff:"홀-", note:"짝 없이 혼자" },
+  { w:"맨발", ch:["맨","발"], cut:1, kind:"pre", root:"발", aff:"맨-", note:"다른 것이 없는" },
+  { w:"햇곡식", ch:["햇","곡","식"], cut:1, kind:"pre", root:"곡식", aff:"햇-", note:"그해에 난" },
+  { w:"덧신", ch:["덧","신"], cut:1, kind:"pre", root:"신", aff:"덧-", note:"겹쳐 신는" },
+  { w:"애호박", ch:["애","호","박"], cut:1, kind:"pre", root:"호박", aff:"애-", note:"덜 자란" },
+  { w:"시아버지", ch:["시","아","버","지"], cut:1, kind:"pre", root:"아버지", aff:"시-", note:"남편의" },
+  { w:"지우개", ch:["지","우","개"], cut:2, kind:"suf", root:"지우-", aff:"-개", note:"동사→명사" },
+  { w:"덮개", ch:["덮","개"], cut:1, kind:"suf", root:"덮-", aff:"-개", note:"동사→명사" },
+  { w:"날개", ch:["날","개"], cut:1, kind:"suf", root:"날-", aff:"-개", note:"동사→명사" },
+  { w:"웃음", ch:["웃","음"], cut:1, kind:"suf", root:"웃-", aff:"-음", note:"동사→명사" },
+  { w:"믿음", ch:["믿","음"], cut:1, kind:"suf", root:"믿-", aff:"-음", note:"동사→명사" },
+  { w:"놀이", ch:["놀","이"], cut:1, kind:"suf", root:"놀-", aff:"-이", note:"동사→명사" },
+  { w:"먹이", ch:["먹","이"], cut:1, kind:"suf", root:"먹-", aff:"-이", note:"동사→명사" },
+  { w:"높이", ch:["높","이"], cut:1, kind:"suf", root:"높-", aff:"-이", note:"형용사→명사·부사" },
+  { w:"크기", ch:["크","기"], cut:1, kind:"suf", root:"크-", aff:"-기", note:"형용사→명사" },
+  { w:"달리기", ch:["달","리","기"], cut:2, kind:"suf", root:"달리-", aff:"-기", note:"동사→명사" },
+  { w:"구경꾼", ch:["구","경","꾼"], cut:2, kind:"suf", root:"구경", aff:"-꾼", note:"~하는 사람" },
+  { w:"선생님", ch:["선","생","님"], cut:2, kind:"suf", root:"선생", aff:"-님", note:"높임" },
+  { w:"욕심꾸러기", ch:["욕","심","꾸","러","기"], cut:2, kind:"suf", root:"욕심", aff:"-꾸러기", note:"~가 심한 사람" },
+];
+
+// 구성: 파생어 vs 합성어
+const GUSEONG = [
+  { w:"지우개", t:"파생어", why:"지우-(어근) + -개(접사)" },
+  { w:"군침", t:"파생어", why:"군-(접사) + 침(어근)" },
+  { w:"풋사과", t:"파생어", why:"풋-(접사) + 사과(어근)" },
+  { w:"사랑스럽다", t:"파생어", why:"사랑(어근) + -스럽-(접사)" },
+  { w:"공부하다", t:"파생어", why:"공부(어근) + -하-(접사)" },
+  { w:"높이", t:"파생어", why:"높-(어근) + -이(접사)" },
+  { w:"구경꾼", t:"파생어", why:"구경(어근) + -꾼(접사)" },
+  { w:"맨발", t:"파생어", why:"맨-(접사) + 발(어근)" },
+  { w:"새파랗다", t:"파생어", why:"새-(접사) + 파랗-(어근)" },
+  { w:"논밭", t:"합성어", why:"논(어근) + 밭(어근)" },
+  { w:"밤낮", t:"합성어", why:"밤(어근) + 낮(어근)" },
+  { w:"꽃밭", t:"합성어", why:"꽃(어근) + 밭(어근)" },
+  { w:"손수건", t:"합성어", why:"손(어근) + 수건(어근)" },
+  { w:"밤나무", t:"합성어", why:"밤(어근) + 나무(어근)" },
+  { w:"고무신", t:"합성어", why:"고무(어근) + 신(어근)" },
+  { w:"큰아버지", t:"합성어", why:"큰(어근) + 아버지(어근)" },
+  { w:"돌다리", t:"합성어", why:"돌(어근) + 다리(어근)" },
+  { w:"첫사랑", t:"합성어", why:"첫(어근) + 사랑(어근)" },
+  { w:"검붉다", t:"합성어", why:"검-(어근) + 붉다(어근)" },
+  { w:"힘들다", t:"합성어", why:"힘(어근) + 들다(어근)" },
+  { w:"집안", t:"합성어", why:"집(어근) + 안(어근)" },
+  { w:"새해", t:"합성어", why:"새(어근) + 해(어근)" },
+];
+
+// 배열: 통사적 vs 비통사적 (합성어)
+const BAEYEOL = [
+  { w:"집안", t:"통사적", why:"명사 + 명사" },
+  { w:"논밭", t:"통사적", why:"명사 + 명사" },
+  { w:"고무신", t:"통사적", why:"명사 + 명사" },
+  { w:"새해", t:"통사적", why:"관형사 + 명사" },
+  { w:"첫사랑", t:"통사적", why:"관형사 + 명사" },
+  { w:"큰아버지", t:"통사적", why:"어간 + 관형사형 어미(-ㄴ) + 명사" },
+  { w:"굳은살", t:"통사적", why:"어간 + 관형사형 어미(-은) + 명사" },
+  { w:"잡아먹다", t:"통사적", why:"어간 + 연결 어미(-아) + 용언" },
+  { w:"돌아가다", t:"통사적", why:"어간 + 연결 어미(-아) + 용언" },
+  { w:"그만두다", t:"통사적", why:"부사 + 용언" },
+  { w:"힘들다", t:"통사적", why:"조사 생략 (힘이 들다)" },
+  { w:"본받다", t:"통사적", why:"조사 생략 (본을 받다)" },
+  { w:"덮밥", t:"비통사적", why:"용언 어간 + 명사, 관형사형 어미 생략" },
+  { w:"검버섯", t:"비통사적", why:"용언 어간 + 명사, 관형사형 어미 생략" },
+  { w:"접칼", t:"비통사적", why:"용언 어간 + 명사, 관형사형 어미 생략" },
+  { w:"꺾쇠", t:"비통사적", why:"용언 어간 + 명사, 관형사형 어미 생략" },
+  { w:"늦더위", t:"비통사적", why:"용언 어간 + 명사, 관형사형 어미 생략" },
+  { w:"뛰놀다", t:"비통사적", why:"어간 + 용언, 연결 어미 생략" },
+  { w:"검붉다", t:"비통사적", why:"어간 + 용언, 연결 어미 생략" },
+  { w:"오르내리다", t:"비통사적", why:"어간 + 용언, 연결 어미 생략" },
+  { w:"여닫다", t:"비통사적", why:"어간 + 용언, 연결 어미 생략" },
+  { w:"부슬비", t:"비통사적", why:"부사 + 명사" },
+  { w:"산들바람", t:"비통사적", why:"부사 + 명사" },
+  { w:"볼록거울", t:"비통사적", why:"부사 + 명사" },
+];
+
+// 형태소: 자립/의존 · 실질/형식
+const MORPH = [
+  { m:"하늘", a:"자립", s:"실질", k:"명사(체언)" },
+  { m:"꽃", a:"자립", s:"실질", k:"명사" },
+  { m:"매우", a:"자립", s:"실질", k:"부사" },
+  { m:"헌", a:"자립", s:"실질", k:"관형사" },
+  { m:"아이고", a:"자립", s:"실질", k:"감탄사" },
+  { m:"이 / 가", a:"의존", s:"형식", k:"조사" },
+  { m:"을 / 를", a:"의존", s:"형식", k:"조사" },
+  { m:"먹-", a:"의존", s:"실질", k:"용언의 어간" },
+  { m:"잡-", a:"의존", s:"실질", k:"용언의 어간" },
+  { m:"푸르-", a:"의존", s:"실질", k:"용언의 어간" },
+  { m:"-다", a:"의존", s:"형식", k:"어미" },
+  { m:"-었-", a:"의존", s:"형식", k:"선어말 어미" },
+  { m:"-고", a:"의존", s:"형식", k:"연결 어미" },
+  { m:"풋-", a:"의존", s:"형식", k:"접두사" },
+  { m:"-개", a:"의존", s:"형식", k:"접미사" },
+  { m:"-음", a:"의존", s:"형식", k:"접미사" },
+];
+
+const PREFIXES = [
+  { a:"군-", mn:"쓸데없는, 가외로 더한", eg:"군것·군말·군침·군식구" },
+  { a:"돌-", mn:"품질이 떨어지는, 야생의", eg:"돌배·돌미역·돌조개" },
+  { a:"홀-", mn:"짝이 없이 혼자뿐인", eg:"홀몸·홀아비·홀어미" },
+  { a:"시-", mn:"남편의", eg:"시아버지·시어머니·시누이" },
+  { a:"양-", mn:"서양의·외국에서 들어온", eg:"양변기·양약·양배추" },
+  { a:"올-", mn:"빨리 여무는", eg:"올밤·올콩·올벼" },
+  { a:"풋-", mn:"덜 익은·미숙한", eg:"풋고추·풋김치·풋사랑" },
+];
+const SUFFIXES = [
+  { a:"-(으)ㅁ·-기·-이·-개", mn:"동사·형용사 → 명사", eg:"믿음·크기·먹이·덮개" },
+  { a:"-하-·-스럽-·-롭-·-답-", mn:"명사 등 → 동사·형용사", eg:"공부하다·사랑스럽다·정답다" },
+  { a:"-이·-히", mn:"형용사 → 부사", eg:"많이·같이·조용히·나란히" },
+];
+
+const CONCEPTS = [
+  { t:"어근", c:"var(--root-bd)", b:"단어를 만들 때 실질적인 의미를 나타내는 중심 부분. 실질 형태소.", e:"‘덮개’의 덮-, ‘풋사과’의 사과" },
+  { t:"접사", c:"var(--aff-bd)", b:"어근에 붙어 뜻을 더하거나 품사를 바꿔 주는 부분. 형식 형태소.", e:"‘풋-’, ‘-개’, ‘-답-’" },
+  { t:"접두사 vs 접미사", c:"var(--lav)", b:"접두사는 어근 앞에 붙어 뜻을 더하거나 강조(품사는 잘 안 바꿈). 접미사는 어근 뒤에 붙어 뜻을 더하거나 품사를 바꿈.", e:"풋+사과 / 공부+하다(명사→동사)" },
+  { t:"파생어 vs 합성어", c:"var(--lav)", b:"파생어 = 어근 + 접사. 합성어 = 어근 + 어근. 둘을 합쳐 복합어라 함.", e:"지우개(파생) ↔ 밤낮(합성)" },
+  { t:"통사적 vs 비통사적", c:"var(--lav)", b:"합성어가 우리말 일반 배열법과 맞으면 통사적, 어긋나면 비통사적(어미 생략·부사+명사 등).", e:"잡아먹다(통사적) ↔ 덮밥·검붉다(비통사적)" },
+  { t:"헷갈림 ① 어근 vs 어간", c:"var(--aff-bd)", b:"어근은 ‘단어를 만들 때’, 어간은 ‘용언이 활용할 때’ 변하지 않는 부분. 파생어·합성어는 둘이 다를 수 있음.", e:"‘짓밟다’ → 어간 짓밟-, 어근 밟-" },
+  { t:"헷갈림 ② 용언의 어간", c:"var(--aff-bd)", b:"용언의 어간(먹-, 잡-)은 혼자 못 쓰여 ‘의존’이지만 실질적 의미가 있어 ‘실질 형태소’!", e:"먹- → 의존 + 실질" },
+];
+
+/* =================== 저장 =================== */
+const KEY = "eojeun_html_v1";
+function load(){ try{ const r=localStorage.getItem(KEY); return r?JSON.parse(r):null; }catch{ return null; } }
+function save(o){ try{ localStorage.setItem(KEY, JSON.stringify(o)); }catch{} }
+
+/* =================== 유틸 =================== */
+function shuffle(a){ const x=[...a]; for(let i=x.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [x[i],x[j]]=[x[j],x[i]]; } return x; }
+function weakFirst(data, keyFn, mastery, n){
+  const s = data.map(d=>({ d, lv: mastery[keyFn(d)]||0 }));
+  s.sort((a,b)=> a.lv-b.lv);
+  return shuffle(s.slice(0, Math.min(n, s.length)).map(o=>o.d));
+}
+
+/* =================== 개념 탭 =================== */
+function Concept(){
+  return (
+    <div className="stack">
+      <p className="lead">먼저 개념을 훑고, 끊어보기와 퀴즈로 반복하면 돼요.</p>
+      {CONCEPTS.map((k,i)=>(
+        <article className="card" key={i}>
+          <h3 className="c-h"><span className="chip" style={{background:k.c}}></span>{k.t}</h3>
+          <p>{k.b}</p>
+          <p className="ex">예 · {k.e}</p>
+        </article>
+      ))}
+      <div className="dict-h">접두사 사전</div>
+      {PREFIXES.map((p,i)=>(
+        <div className="row" key={"p"+i}>
+          <span className="af">{p.a}</span>
+          <span><span className="mn">{p.mn}</span><div className="eg">{p.eg}</div></span>
+        </div>
+      ))}
+      <div className="dict-h">접미사 사전 (품사를 바꿔요)</div>
+      {SUFFIXES.map((p,i)=>(
+        <div className="row" key={"s"+i}>
+          <span className="af" style={{fontSize:14}}>{p.a}</span>
+          <span><span className="mn">{p.mn}</span><div className="eg">{p.eg}</div></span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* =================== 끊어보기 탭 =================== */
+function CutDrill({ mastery, onResult }){
+  const queue = useMemo(()=> weakFirst(CUT, d=>"cut:"+d.w, mastery, 10), []); // eslint-disable-line
+  const [pos,setPos]=useState(0);
+  const [pick,setPick]=useState(null);   // 선택한 위치
+  const [solved,setSolved]=useState(false);
+  const [missed,setMissed]=useState(false);
+  const [shakeAt,setShakeAt]=useState(null);
+  const it = queue[pos % queue.length];
+
+  const tapGap = (p)=>{
+    if(solved) return;
+    setPick(p);
+    if(p===it.cut){
+      setSolved(true);
+      onResult("cut:"+it.w, !missed);
+    }else{
+      if(!missed){ setMissed(true); }
+      setShakeAt(p); setTimeout(()=>setShakeAt(null),350);
+    }
+  };
+  const next = ()=>{ setPick(null); setSolved(false); setMissed(false);
+    setPos(p=> (p+1)%queue.length); };
+
+  // 분해 결과 그룹
+  const leftRole = it.kind==="pre" ? "aff" : "root";
+  const rightRole = it.kind==="pre" ? "root" : "aff";
+
+  return (
+    <div className="stack">
+      <p className="lead">단어를 <b>어근</b>과 <b>접사</b>로 나누는 곳을 톡! 눌러 보세요.</p>
+      <div className="card q-card">
+        {!solved ? (
+          <>
+            <div className="tiles" role="group" aria-label="음절">
+              {it.ch.map((c,i)=>(
+                <React.Fragment key={i}>
+                  <span className="syl">{c}</span>
+                  {i < it.ch.length-1 &&
+                    <button
+                      className={"gap"+(pick===i+1?" pick":"")+(shakeAt===i+1?" shake":"")}
+                      onClick={()=>tapGap(i+1)} aria-label={`${i+1}번째 칸 뒤에서 끊기`} />}
+                </React.Fragment>
+              ))}
+            </div>
+            <span className="ask">{missed ? "거의 다 왔어요! 다른 곳을 눌러 볼까요?" : "톡 눌러서 끊어 보기"}</span>
+          </>
+        ) : (
+          <>
+            <div className="split">
+              <div className={"grp "+leftRole} style={{transform:"translateX(-4px)"}}>
+                {it.ch.slice(0,it.cut).map((c,i)=><span className="syl" key={i}>{c}</span>)}
+              </div>
+              <span className="plus">+</span>
+              <div className={"grp "+rightRole} style={{transform:"translateX(4px)"}}>
+                {it.ch.slice(it.cut).map((c,i)=><span className="syl" key={i}>{c}</span>)}
+              </div>
+            </div>
+            <div className="split" style={{gap:10}}>
+              {it.kind==="pre" ? (
+                <>
+                  <span className="tile aff"><span className="tg">접사</span>{it.aff}</span>
+                  <span className="plus">+</span>
+                  <span className="tile root"><span className="tg">어근</span>{it.root}</span>
+                </>
+              ) : (
+                <>
+                  <span className="tile root"><span className="tg">어근</span>{it.root}</span>
+                  <span className="plus">+</span>
+                  <span className="tile aff"><span className="tg">접사</span>{it.aff}</span>
+                </>
+              )}
+            </div>
+            <p className={"verdict "+(missed?"no":"ok")}>{missed?"다시 기억!":"정답이에요"}</p>
+            <p className="why">
+              {it.kind==="pre"?"접두사":"접미사"} <b>{it.aff}</b>
+              <span className="tagk">{it.note}</span>
+            </p>
+            <button className="primary" onClick={next}>다음 단어 →</button>
+          </>
+        )}
+      </div>
+      <div className="count" style={{textAlign:"center"}}>{(pos%queue.length)+1} / {queue.length}</div>
+    </div>
+  );
+}
+
+/* =================== 2지선다 공통 =================== */
+function Choice({ word, options, answer, why, keyId, onResult, onNext, idx, total, kchip }){
+  const [pick,setPick]=useState(null);
+  const done = pick!==null;
+  const ok = pick===answer;
+  const choose=(o)=>{ if(done) return; setPick(o); onResult(keyId, o===answer); };
+  return (
+    <div className="card q-card">
+      <span className="big-word">{word}{kchip ? <span className="tagk" style={{verticalAlign:"middle"}}>{kchip}</span> : null}</span>
+      {!done && <span className="ask">둘 중 무엇일까요?</span>}
+      <div className="opts">
+        {options.map(o=>{
+          let cls="opt";
+          if(done){ if(o===answer) cls+=" right"; else if(o===pick) cls+=" wrong"; else cls+=" dim"; }
+          return <button key={o} className={cls} disabled={done} onClick={()=>choose(o)}>{o}</button>;
+        })}
+      </div>
+      {done && (
+        <>
+          <p className={"verdict "+(ok?"ok":"no")}>{ok?"정답이에요":"다시 보기"}</p>
+          <p className="why">{why}</p>
+          <button className="primary" onClick={onNext}>{idx+1>=total?"처음부터":"다음 →"}</button>
+        </>
+      )}
+      <div className="count">{idx+1} / {total}</div>
+    </div>
+  );
+}
+
+/* =================== 복합어 탭 =================== */
+function Compound({ mastery, onResult }){
+  const [mode,setMode]=useState("gu"); // gu 구성 / ba 배열
+  const data = mode==="gu"?GUSEONG:BAEYEOL;
+  const opts = mode==="gu"?["파생어","합성어"]:["통사적","비통사적"];
+  const pfx = mode==="gu"?"gu:":"ba:";
+  const queue = useMemo(()=> weakFirst(data, d=>pfx+d.w, mastery, 10), [mode]); // eslint-disable-line
+  const [pos,setPos]=useState(0);
+  const it = queue[pos % queue.length];
+  const next=()=> setPos(p=>(p+1)%queue.length);
+
+  return (
+    <div className="stack">
+      <div className="seg">
+        {[["gu","파생 / 합성"],["ba","통사 / 비통사"]].map(([v,l])=>(
+          <button key={v} className={"seg-b"+(mode===v?" on":"")}
+            onClick={()=>{ setMode(v); setPos(0); }}>{l}</button>
+        ))}
+      </div>
+      <p className="lead">{mode==="gu"
+        ? "어근+접사면 파생어, 어근+어근이면 합성어!"
+        : "합성어의 배열이 우리말 어순과 맞으면 통사적, 어긋나면 비통사적!"}</p>
+      <Choice key={mode+pos} word={it.w} options={opts} answer={it.t}
+        why={<><b>{it.t}</b> · {it.why}</>} keyId={pfx+it.w}
+        onResult={onResult} onNext={next} idx={pos} total={queue.length} />
+    </div>
+  );
+}
+
+/* =================== 형태소 탭 (두 갈래) =================== */
+function Morpheme({ mastery, onResult }){
+  const queue = useMemo(()=> weakFirst(MORPH, d=>"mo:"+d.m, mastery, 10), []); // eslint-disable-line
+  const [pos,setPos]=useState(0);
+  const [a,setA]=useState(null); // 자립/의존
+  const [s,setS]=useState(null); // 실질/형식
+  const it = queue[pos % queue.length];
+  const done = a!==null && s!==null;
+  const ok = done && a===it.a && s===it.s;
+
+  function finish(av,sv){
+    if(av!==null&&sv!==null){ onResult("mo:"+it.m, av===it.a && sv===it.s); }
+  }
+  const pickA=(v)=>{ if(a!==null) return; setA(v); finish(v,s); };
+  const pickS=(v)=>{ if(s!==null) return; setS(v); finish(a,v); };
+  const next=()=>{ setA(null); setS(null); setPos(p=>(p+1)%queue.length); };
+
+  const btn = (cur,val,corr,onPick)=>{
+    let cls="opt";
+    if(cur!==null){ if(val===corr) cls+=" right"; else if(val===cur) cls+=" wrong"; else cls+=" dim"; }
+    return <button className={cls} disabled={cur!==null} onClick={()=>onPick(val)}>{val}</button>;
+  };
+
+  return (
+    <div className="stack">
+      <p className="lead">두 기준으로 차례차례 분류해 보세요.</p>
+      <div className="card q-card">
+        <span className="big-word">{it.m}</span>
+
+        <div style={{width:"100%",display:"flex",flexDirection:"column",gap:8}}>
+          <div className="step-q"><span className="n">1</span>혼자 쓰일 수 있나요?</div>
+          <div className="opts">
+            {btn(a,"자립",it.a,pickA)}
+            {btn(a,"의존",it.a,pickA)}
+          </div>
+        </div>
+
+        <div style={{width:"100%",display:"flex",flexDirection:"column",gap:8,
+          opacity:a===null?.45:1, pointerEvents:a===null?"none":"auto"}}>
+          <div className="step-q"><span className="n">2</span>실질적 의미가 있나요?</div>
+          <div className="opts">
+            {btn(s,"실질",it.s,pickS)}
+            {btn(s,"형식",it.s,pickS)}
+          </div>
+        </div>
+
+        {done && (
+          <>
+            <p className={"verdict "+(ok?"ok":"no")}>{ok?"둘 다 정답!":"다시 보기"}</p>
+            <p className="why">
+              <b>{it.k}</b> · {it.a} 형태소 · {it.s} 형태소
+            </p>
+            <button className="primary" onClick={next}>다음 →</button>
+          </>
+        )}
+        <div className="count">{pos+1} / {queue.length}</div>
+      </div>
+    </div>
+  );
+}
+
+/* =================== 오답노트 =================== */
+const LABELS = { cut:"끊어보기", gu:"파생/합성", ba:"통사/비통사", mo:"형태소" };
+function lookupWhy(key){
+  const [p,...rest]=key.split(":"); const v=rest.join(":");
+  if(p==="cut"){ const d=CUT.find(x=>x.w===v); return d?`${d.root} + ${d.aff}`:""; }
+  if(p==="gu"){ const d=GUSEONG.find(x=>x.w===v); return d?`${d.t} · ${d.why}`:""; }
+  if(p==="ba"){ const d=BAEYEOL.find(x=>x.w===v); return d?`${d.t} · ${d.why}`:""; }
+  if(p==="mo"){ const d=MORPH.find(x=>x.m===v); return d?`${d.k} · ${d.a}·${d.s}`:""; }
+  return "";
+}
+function nameOf(key){ const [,...r]=key.split(":"); return r.join(":"); }
+
+function Wrong({ wrong, onClear }){
+  if(!wrong.length) return (
+    <div className="empty">
+      <div className="mk">✓</div>
+      <p>아직 오답이 없어요.<br/>퀴즈에서 틀린 것이 여기 모여요.</p>
+    </div>
+  );
+  return (
+    <div className="stack">
+      <div className="row-b">
+        <p className="lead">틀린 항목 {wrong.length}개 · 각 모드에서 자동으로 더 자주 나와요</p>
+        <button className="ghost sm" onClick={onClear}>비우기</button>
+      </div>
+      {wrong.map(k=>(
+        <div className="card mini" key={k}>
+          <div>
+            <div className="mw">{nameOf(k)}</div>
+            <div className="mk">{lookupWhy(k)}</div>
+          </div>
+          <span className="tagk">{LABELS[k.split(":")[0]]}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* =================== 앱 =================== */
+const TABS=[["concept","개념"],["cut","끊어보기"],["comp","복합어"],["morph","형태소"],["wrong","오답"]];
+const TOTAL = CUT.length + GUSEONG.length + BAEYEOL.length + MORPH.length;
+
+function App(){
+  const [tab,setTab]=useState("concept");
+  const [mastery,setMastery]=useState({});
+  const [wrong,setWrong]=useState([]);
+
+  useEffect(()=>{ const s=load(); if(s){ setMastery(s.mastery||{}); setWrong(s.wrong||[]); } },[]);
+
+  const onResult = useCallback((key, ok)=>{
+    setMastery(pm=>{
+      const lv=pm[key]||0;
+      const m={...pm,[key]: ok?Math.min(lv+1,3):0};
+      setWrong(pw=>{
+        const w = ok ? pw.filter(x=>x!==key) : (pw.includes(key)?pw:[...pw,key]);
+        save({mastery:m, wrong:w});
+        return w;
+      });
+      return m;
+    });
+  },[]);
+
+  const clearWrong=()=> setWrong(w=>{ save({mastery, wrong:[]}); return []; });
+
+  const mastered = Object.values(mastery).filter(v=>v>=2).length;
+  const pct = Math.round((mastered/TOTAL)*100);
+
+  return (
+    <>
+      <header className="hd">
+        <div className="hd-row">
+          <h1 className="title jua">어근<span className="pin">·</span>접사 학습기</h1>
+          <span className="src">경복여고 1학년 국어B</span>
+        </div>
+        <div className="bar" aria-label={"숙련도 "+pct+"%"}>
+          <i style={{width:Math.max(pct,4)+"%"}}></i>
+          <b>익힌 단어 {mastered} / {TOTAL}</b>
+        </div>
+      </header>
+
+      <nav className="tabs">
+        {TABS.map(([v,l])=>(
+          <button key={v} className={"tab"+(tab===v?" on":"")} onClick={()=>setTab(v)}>
+            {l}{v==="wrong"&&wrong.length?<span className="dot">{wrong.length}</span>:null}
+          </button>
+        ))}
+      </nav>
+
+      <main>
+        {tab==="concept" && <Concept/>}
+        {tab==="cut" && <CutDrill mastery={mastery} onResult={onResult}/>}
+        {tab==="comp" && <Compound mastery={mastery} onResult={onResult}/>}
+        {tab==="morph" && <Morpheme mastery={mastery} onResult={onResult}/>}
+        {tab==="wrong" && <Wrong wrong={wrong} onClear={clearWrong}/>}
+      </main>
+
+      <p className="ft">진도는 이 브라우저에 저장돼요 · 약한 단어부터 다시 출제<br/>경복여고 국어B 4단원 자료 기반</p>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
